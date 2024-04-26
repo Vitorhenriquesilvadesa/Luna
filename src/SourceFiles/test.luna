@@ -1,0 +1,19 @@
+while true {
+    print("Hello world")
+    break
+}
+
+if true {
+
+}
+
+for _;; {
+
+}
+
+class TestClass(SuperClass) {
+
+    __init__(self) {
+
+    }
+}

@@ -1,0 +1,9 @@
+# ninja log v5
+2465	2624	1714060770746956533	LunaLang	19319d749198c3e9
+1	1653	1714052590611614093	CMakeFiles/LunaLang.dir/src/Mercury/Mercury.cpp.o	82a1b5e2d0fa76f6
+1	1919	1714057605349254492	CMakeFiles/LunaLang.dir/src/Venus/Statement.cpp.o	18768f8ca361eda4
+0	2465	1714060770586969979	CMakeFiles/LunaLang.dir/src/Venus/Venus.cpp.o	ad94b69685a85dc
+1	1938	1714057605369254200	CMakeFiles/LunaLang.dir/src/Venus/Expression.cpp.o	4f3f892d5d483003
+0	619	1713968186982437111	CMakeFiles/LunaLang.dir/src/Util/FileReader.cpp.o	3bf2948ff41278a7
+1	2131	1713998643845979880	CMakeFiles/LunaLang.dir/main.cpp.o	7bad04fb26f3c6c2
+1	2489	1714060433308959121	CMakeFiles/LunaLang.dir/Main.cpp.o	c20612a501fdc31c
