@@ -21,7 +21,12 @@ static void repl()
 			break;
 		}
 
-		printf(line);
+		if (strcmp(line, "exit\n") == 0)
+		{
+			printf("\n");
+			break;
+		}
+
 		interpret(line);
 	}
 }
@@ -82,6 +87,13 @@ int main(int argc, const char* argv[]) {
 	}
 	else if (argc == 2)
 	{
+		// Internal commands if aplicable.
+		if (strcmp(argv[1], "--version") == 0)
+		{
+			printf("Luna Version - 0.0.1 Debug\n");
+			return 0;
+		}
+
 		runFile(argv[1]);
 	}
 	else
