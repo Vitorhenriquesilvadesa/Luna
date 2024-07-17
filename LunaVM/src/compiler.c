@@ -143,6 +143,25 @@ static void emitBytes(uint8_t byte1, uint8_t byte2)
 	emitByte(byte2);
 }
 
+static void emitLoop(int loopStart)
+{
+	emitByte(OP_LOOP);
+
+	int offset = currentChunk()->count - loopStart + 2;
+	if (offset > UINT16_MAX) error("Loop body too large.");
+
+	emitByte((offset >> 8) & 0xFF);
+	emitByte(offset & 0xFF);
+}
+
+static int emitJump(uint8_t instruction)
+{
+	emitByte(instruction);
+	emitByte(0xFF);
+	emitByte(0xFF);
+	return currentChunk()->count - 2;
+}
+
 static void emitReturn()
 {
 	emitByte(OP_RETURN);
@@ -163,6 +182,19 @@ static uint8_t makeConstant(Value value)
 static void emitConstant(Value value)
 {
 	emitBytes(OP_CONSTANT, makeConstant(value));
+}
+
+static void patchJump(int offset)
+{
+	int jump = currentChunk()->count - offset - 2;
+
+	if (jump > UINT16_MAX)
+	{
+		error("Too much code to jump over.");
+	}
+
+	currentChunk()->code[offset] = (jump >> 8) & 0xFF;
+	currentChunk()->code[offset + 1] = jump & 0xFF;
 }
 
 static void initCompiler(Compiler* compiler)
@@ -234,6 +266,16 @@ static void defineVariable(uint8_t global)
 	emitBytes(OP_DEFINE_GLOBAL, global);
 }
 
+static void and (bool canAssign)
+{
+	int endJump = emitJump(OP_JUMP_IF_FALSE);
+
+	emitByte(OP_POP);
+	parsePrecedence(PREC_AND);
+
+	patchJump(endJump);
+}
+
 static void binary(bool canAssign)
 {
 	TokenType operatorType = parser.previous.type;
@@ -277,6 +319,18 @@ static void number(bool canAssign)
 {
 	double value = strtod(parser.previous.start, NULL);
 	emitConstant(NUMBER_VAL(value));
+}
+
+static void or (bool canAssign)
+{
+	int elseJump = emitJump(OP_JUMP_IF_FALSE);
+	int endJump = emitJump(OP_JUMP);
+
+	patchJump(elseJump);
+	emitByte(OP_POP);
+
+	parsePrecedence(PREC_OR);
+	patchJump(endJump);
 }
 
 static void string(bool canAssign)
@@ -356,7 +410,7 @@ ParseRule rules[] = {
   [TOKEN_IDENTIFIER] = {variable,     NULL,   PREC_NONE},
   [TOKEN_STRING] = {string,     NULL,   PREC_NONE},
   [TOKEN_NUMBER] = {number,   NULL,   PREC_NONE},
-  [TOKEN_AND] = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_AND] = {NULL,     and,   PREC_AND},
   [TOKEN_CLASS] = {NULL,     NULL,   PREC_NONE},
   [TOKEN_ELSE] = {NULL,     NULL,   PREC_NONE},
   [TOKEN_FALSE] = {literal,     NULL,   PREC_NONE},
@@ -364,7 +418,7 @@ ParseRule rules[] = {
   [TOKEN_FUN] = {NULL,     NULL,   PREC_NONE},
   [TOKEN_IF] = {NULL,     NULL,   PREC_NONE},
   [TOKEN_NULL] = {literal,     NULL,   PREC_NONE},
-  [TOKEN_OR] = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_OR] = {NULL,     or,   PREC_OR},
   [TOKEN_PRINT] = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RETURN] = {NULL,     NULL,   PREC_NONE},
   [TOKEN_SUPER] = {NULL,     NULL,   PREC_NONE},
@@ -513,11 +567,46 @@ static void expressionStatement()
 	emitByte(OP_POP);
 }
 
+static void ifStatement()
+{
+	consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+	expression();
+	consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+	int thenJump = emitJump(OP_JUMP_IF_FALSE);
+	emitByte(OP_POP);
+	statement();
+
+	int elseJump = emitJump(OP_JUMP);
+
+	patchJump(thenJump);
+	emitByte(OP_POP);
+
+	if (match(TOKEN_ELSE)) statement();
+	patchJump(elseJump);
+}
+
 static void printStatement()
 {
 	expression();
 	consume(TOKEN_SEMICOLON, "Expect ';' after value.");
 	emitByte(OP_PRINT);
+}
+
+static void whileStatement()
+{
+	int loopStart = currentChunk()->count;
+	consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
+	expression();
+	consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+	int exitJump = emitJump(OP_JUMP_IF_FALSE);
+	emitByte(OP_POP);
+	statement();
+	emitLoop(loopStart);
+
+	patchJump(exitJump);
+	emitByte(OP_POP);
 }
 
 static void synchronize()
@@ -567,6 +656,14 @@ static void statement()
 	if (match(TOKEN_PRINT))
 	{
 		printStatement();
+	}
+	else if (match(TOKEN_IF))
+	{
+		ifStatement();
+	}
+	else if (match(TOKEN_WHILE))
+	{
+		whileStatement();
 	}
 	else if (match(TOKEN_LEFT_BRACE))
 	{

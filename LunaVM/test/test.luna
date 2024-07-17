@@ -1,2 +1,5 @@
-var x = 10;
-print 10 * x;
+var a = 0;
+
+
+
+while ( a < 20 ) print a;

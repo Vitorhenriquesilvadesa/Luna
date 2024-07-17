@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <windows.h>
 
 #include "common.h"
 #include "chunk.h"
@@ -63,7 +64,8 @@ static char* readFile(const char* path)
 
 	buffer[bytesRead] = '\0';
 
-	fclose(file);
+	int success = fclose(file);
+	if (success != 0) printf("Erro ao fechar o arquivo\n\n\n");
 	return buffer;
 }
 
@@ -101,6 +103,8 @@ int main(int argc, const char* argv[]) {
 		fprintf(stderr, "Usage: CLuna [path]\n");
 		exit(64);
 	}
+
+	Sleep(2000);
 
 	freeVM();
 

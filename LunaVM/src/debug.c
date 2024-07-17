@@ -25,6 +25,14 @@ static int byteInstruction(const char* name, Chunk* chunk, int offset)
 	return offset + 2;
 }
 
+static int jumpInstruction(const char* name, int sign, Chunk* chunk, int offset)
+{
+	uint16_t jump = (uint16_t)(chunk->code[offset + 1] << 8);
+	jump |= chunk->code[offset + 2];
+	printf("%-16s %4d -> %d\n", name, offset, offset + 3 + sign * jump);
+	return offset + 3;
+}
+
 static int constantInstruction(const char* name, Chunk* chunk, int offset)
 {
 	uint8_t constant = chunk->code[offset + 1];
@@ -51,7 +59,7 @@ int disassembleInstruction(Chunk* chunk, int offset)
 	switch (instruction) 
 	{
 	case OP_CONSTANT:
-		return constantInstruction("op_const", chunk, offset);
+		return constantInstruction("const", chunk, offset);
 
 	case OP_NULL:
 		return simpleInstruction("op_null", chunk, offset);
@@ -109,6 +117,15 @@ int disassembleInstruction(Chunk* chunk, int offset)
 
 	case OP_PRINT:
 		return simpleInstruction("print", offset);
+
+	case OP_JUMP:
+		return jumpInstruction("jump", 1, chunk, offset);
+
+	case OP_LOOP:
+		return jumpInstruction("loop", -1, chunk, offset);
+
+	case OP_JUMP_IF_FALSE:
+		return jumpInstruction("bnf", 1, chunk, offset);
 
 	case OP_RETURN:
 		return simpleInstruction("return", offset);
