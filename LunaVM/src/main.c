@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <windows.h>
 
 #include "common.h"
 #include "chunk.h"
@@ -72,6 +71,7 @@ static char* readFile(const char* path)
 static void runFile(const char* path)
 {
 	char* source = readFile(path);
+
 	InterpretResult result = interpret(source);
 	free(source);
 
@@ -103,8 +103,6 @@ int main(int argc, const char* argv[]) {
 		fprintf(stderr, "Usage: CLuna [path]\n");
 		exit(64);
 	}
-
-	Sleep(2000);
 
 	freeVM();
 

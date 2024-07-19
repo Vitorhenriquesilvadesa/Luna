@@ -59,46 +59,46 @@ int disassembleInstruction(Chunk* chunk, int offset)
 	switch (instruction) 
 	{
 	case OP_CONSTANT:
-		return constantInstruction("const", chunk, offset);
+		return constantInstruction("push_constant", chunk, offset);
 
 	case OP_NULL:
-		return simpleInstruction("op_null", chunk, offset);
+		return simpleInstruction("push_null", chunk, offset);
 
 	case OP_TRUE:
-		return simpleInstruction("op_t", chunk, offset);
+		return simpleInstruction("push_true", chunk, offset);
 
 	case OP_FALSE:	
-		return simpleInstruction("op_f", chunk, offset);
+		return simpleInstruction("push_false", chunk, offset);
 
 	case OP_POP:
 		return simpleInstruction("pop", offset);
 
 	case OP_GET_LOCAL:
-		return byteInstruction("local_g", chunk, offset);
+		return byteInstruction("get_local", chunk, offset);
 
 	case OP_SET_LOCAL:
-		return byteInstruction("local_s", chunk, offset);
+		return byteInstruction("set_local", chunk, offset);
 
 	case OP_DEFINE_GLOBAL:
-		return constantInstruction("global_d", chunk, offset);
+		return constantInstruction("define_global", chunk, offset);
 
 	case OP_GET_GLOBAL:
-		return constantInstruction("global_g", chunk, offset);
+		return constantInstruction("get_global", chunk, offset);
 
 	case OP_SET_GLOBAL:
-		return constantInstruction("global_s", chunk, offset);
+		return constantInstruction("set_global", chunk, offset);
 
 	case OP_EQUAL:
-		return simpleInstruction("op_eq", chunk, offset);
+		return simpleInstruction("op_equal", chunk, offset);
 
 	case OP_GREATER:
-		return simpleInstruction("op_g", chunk, offset);
+		return simpleInstruction("op_greater", chunk, offset);
 
 	case OP_LESS:
-		return simpleInstruction("op_l", chunk, offset);
+		return simpleInstruction("op_less", chunk, offset);
 
 	case OP_NEGATE:
-		return simpleInstruction("neg", offset);
+		return simpleInstruction("negate", offset);
 
 	case OP_ADD:
 		return simpleInstruction("add", offset);
@@ -125,7 +125,7 @@ int disassembleInstruction(Chunk* chunk, int offset)
 		return jumpInstruction("loop", -1, chunk, offset);
 
 	case OP_JUMP_IF_FALSE:
-		return jumpInstruction("bnf", 1, chunk, offset);
+		return jumpInstruction("jump_if_false", 1, chunk, offset);
 
 	case OP_RETURN:
 		return simpleInstruction("return", offset);
