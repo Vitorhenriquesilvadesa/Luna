@@ -144,7 +144,19 @@ static TokenType identifierType()
 	case 'i': return checkKeyword(1, 1, "f", TOKEN_IF);
 	case 'n': return checkKeyword(1, 3, "ull", TOKEN_NULL);
 	case 'o': return checkKeyword(1, 1, "r", TOKEN_OR);
-	case 'p': return checkKeyword(1, 4, "rint", TOKEN_PRINT);
+	case 'p':
+		if (scanner.current - scanner.start >= 5 &&
+			memcmp(scanner.start + 1, "rint", 4) == 0)
+		{
+			if (scanner.current - scanner.start == 5) {
+				return TOKEN_PRINT;
+			}
+			if (scanner.current - scanner.start == 7 &&
+				memcmp(scanner.start + 5, "ln", 2) == 0) {
+				return TOKEN_PRINTLN;
+			}
+		}
+		break;
 	case 'r': return checkKeyword(1, 5, "eturn", TOKEN_RETURN);
 	case 's': return checkKeyword(1, 4, "uper", TOKEN_SUPER);
 	case 't':
