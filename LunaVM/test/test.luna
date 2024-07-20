@@ -1,22 +1,13 @@
-fun benchmark() {
-	var start = clock();
+var x = 100;
 
-	for(var i = 0; i < 10000000; i = i + 1) {
-		
+fun test() {
+	var x = 999;
+
+	fun internal() {
+		print x;
 	}
 
-	var end = clock();
-
-	return end - start;
+	internal();
 }
 
-var elapsedTime = benchmark();
-
-println "";
-
-print "Elapsed time: ";
-print elapsedTime * 1000;
-print "ms";
-
-println "";
-
+test();
