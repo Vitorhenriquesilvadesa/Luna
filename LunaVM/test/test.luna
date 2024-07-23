@@ -1,13 +1,10 @@
-var x = 100;
+def sayHello() {
+	var i = 0;
 
-fun test() {
-	var x = 999;
-
-	fun internal() {
-		print x;
+	while i < 5 {
+		println i;
+		i = i + 1;
 	}
-
-	internal();
 }
 
-test();
+sayHello();
