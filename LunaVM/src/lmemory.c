@@ -10,12 +10,18 @@
 
 #define GC_HEAP_GROW_FACTOR 2
 
+static void freeObject(Obj* object);
+
 void* reallocate(void* pointer, size_t oldSize, size_t newSize)
 {
 	vm.bytesAllocated += newSize - oldSize;
 
 	if (newSize > oldSize)
 	{
+#ifdef DEBUG_LOG_GC
+		printf("Allocating %d bytes of memory.\n", newSize);
+#endif
+
 #ifdef DEBUG_STRESS_GC
 		collectGarbage();
 #endif
@@ -158,10 +164,11 @@ void collectGarbage()
 
 #ifdef DEBUG_LOG_GC
 	printf("--gc end \n");
-	printf("	collected %zu bytes (from %zu to %zu) next at %zu\n", 
+	printf("	now with %zu bytes. Collected %zu bytes (from %zu to %zu) next at %zu\n", 
+		vm.bytesAllocated,
 		before - vm.bytesAllocated, 
 		before,
-		vm.bytesAllocated, 
+		vm.bytesAllocated,
 		vm.nextGC
 	);
 #endif
