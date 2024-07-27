@@ -4,14 +4,6 @@
 #include "common.h"
 #include "scanner.h"
 
-typedef struct {
-	const char* start;
-	const char* current;
-	int line;
-} Scanner;
-
-Scanner scanner;
-
 void initScanner(const char* source)
 {
 	scanner.start = source;
@@ -114,7 +106,7 @@ static void skipWhitespace()
 
 static TokenType checkKeyword(int start, int length, const char* rest, TokenType type)
 {
-	if (scanner.current - scanner.start == start + length && 
+	if (scanner.current - scanner.start == start + length &&
 		memcmp(scanner.start + start, rest, length) == 0)
 	{
 		return type;
@@ -123,16 +115,22 @@ static TokenType checkKeyword(int start, int length, const char* rest, TokenType
 	return TOKEN_IDENTIFIER;
 }
 
+static bool isKeyword(int start, int length, const char* rest)
+{
+	return (scanner.current - scanner.start == start + length &&
+		memcmp(scanner.start + start, rest, length) == 0);
+}
+
+
 static TokenType identifierType()
 {
 	switch (scanner.start[0])
 	{
 	case 'a': return checkKeyword(1, 2, "nd", TOKEN_AND);
-	case 'c': return checkKeyword(1, 4, "lass", TOKEN_CLASS);
 	case 'd': return checkKeyword(1, 2, "ef", TOKEN_FUN);
 	case 'e': return checkKeyword(1, 3, "lse", TOKEN_ELSE);
 	case 'f':
-		if (scanner.current - scanner.start > 1) 
+		if (scanner.current - scanner.start > 1)
 		{
 			switch (scanner.start[1])
 			{
@@ -141,7 +139,16 @@ static TokenType identifierType()
 			}
 		}
 		break;
-	case 'i': return checkKeyword(1, 1, "f", TOKEN_IF);
+	case 'i':
+		if (scanner.current - scanner.start > 1)
+		{
+			switch (scanner.start[1])
+			{
+			case 'f': return checkKeyword(2, 0, "", TOKEN_IF);
+			case 'm': return checkKeyword(2, 4, "port", TOKEN_IMPORT);
+			}
+		}
+		break;
 	case 'n': return checkKeyword(1, 3, "ull", TOKEN_NULL);
 	case 'o': return checkKeyword(1, 1, "r", TOKEN_OR);
 	case 'p':
@@ -158,7 +165,16 @@ static TokenType identifierType()
 		}
 		break;
 	case 'r': return checkKeyword(1, 5, "eturn", TOKEN_RETURN);
-	case 's': return checkKeyword(1, 4, "uper", TOKEN_SUPER);
+	case 's':
+		if (scanner.current - scanner.start > 1)
+		{
+			switch (scanner.start[1])
+			{
+			case 'u': return checkKeyword(2, 4, "per", TOKEN_SUPER);
+			case 't': return checkKeyword(2, 4, "ruct", TOKEN_STRUCT);
+			}
+		}
+		break;
 	case 't':
 		if (scanner.current - scanner.start > 1)
 		{
@@ -214,7 +230,7 @@ Token scanToken()
 	skipWhitespace();
 	scanner.start = scanner.current;
 
-	if (isAtEnd()) 
+	if (isAtEnd())
 	{
 		return makeToken(TOKEN_EOF);
 	}

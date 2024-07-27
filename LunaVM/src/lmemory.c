@@ -81,7 +81,31 @@ static void blanckenObject(Obj* object)
 
 	switch (object->type)
 	{
+	case OBJ_BOUND_METHOD:
+	{
+		ObjBoundMethod* bound = (ObjBoundMethod*)object;
+		markValue(bound->receiver);
+		markObject((Obj*)bound->method);
+		break;
+	}
+	case OBJ_STRUCT:
+	{
+		ObjStruct* klass = (ObjStruct*)object;
+		markObject((Obj*)klass->name);
+		markTable(&klass->methods);
+		break;
+	}
+
+	case OBJ_INSTANCE:
+	{
+		ObjInstance* instance = (ObjInstance*)object;
+		markObject((Obj*)instance->klass);
+		markTable(&instance->fields);
+		break;
+	}
+
 	case OBJ_CLOSURE:
+	{
 		ObjClosure* closure = (ObjClosure*)object;
 		markObject((Obj*)closure->function);
 
@@ -90,16 +114,21 @@ static void blanckenObject(Obj* object)
 			markObject((Obj*)closure->upvalues[i]);
 		}
 		break;
+	}
 
 	case OBJ_FUNCTION:
+	{
 		ObjFunction* function = (ObjFunction*)object;
 		markObject((Obj*)function->name);
 		markArray(&function->chunk.constants);
 		break;
+	}
 
 	case OBJ_UPVALUE:
+	{
 		markValue(((ObjUpvalue*)object)->closed);
 		break;
+	}
 
 	case OBJ_NATIVE:
 	case OBJ_STRING:
@@ -211,6 +240,20 @@ static void freeObject(Obj* object)
 
 	switch (object->type)
 	{
+	case OBJ_BOUND_METHOD:
+	{
+		FREE(ObjBoundMethod, object);
+		break;
+	}
+
+	case OBJ_STRUCT:
+	{
+		ObjStruct* klass = (ObjStruct*)object;
+		freeTable(&klass->methods);
+		FREE(ObjStruct, object);
+		break;
+	}
+
 	case OBJ_STRING:
 	{
 		ObjString* string = (ObjString*)object;
@@ -238,6 +281,14 @@ static void freeObject(Obj* object)
 		ObjFunction* function = (ObjFunction*)object;
 		freeChunk(&function->chunk);
 		FREE(ObjFunction, object);
+		break;
+	}
+
+	case OBJ_INSTANCE:
+	{
+		ObjInstance* instance = (ObjInstance*)object;
+		freeTable(&instance->fields);
+		FREE(ObjInstance, object);
 		break;
 	}
 

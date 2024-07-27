@@ -1,6 +1,14 @@
 #ifndef cluna_scanner_h
 #define cluna_scanner_h
 
+typedef struct {
+	const char* start;
+	const char* current;
+	int line;
+} Scanner;
+
+Scanner scanner;
+
 typedef enum {
 	// Single-character tokens.
 	TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN,
@@ -15,12 +23,12 @@ typedef enum {
 	// Literals.
 	TOKEN_IDENTIFIER, TOKEN_STRING, TOKEN_NUMBER,
 	// Keywords.
-	TOKEN_AND, TOKEN_CLASS, TOKEN_ELSE, TOKEN_FALSE,
+	TOKEN_AND, TOKEN_STRUCT, TOKEN_ELSE, TOKEN_FALSE,
 	TOKEN_FOR, TOKEN_FUN, TOKEN_IF, TOKEN_NULL, TOKEN_OR,
 	TOKEN_PRINT, TOKEN_PRINTLN, TOKEN_RETURN, TOKEN_SUPER, TOKEN_THIS,
 	TOKEN_TRUE, TOKEN_VAR, TOKEN_WHILE,
 
-	TOKEN_ERROR, TOKEN_EOF
+	TOKEN_IMPORT, TOKEN_ERROR, TOKEN_EOF
 } TokenType;
 
 typedef struct {

@@ -5,7 +5,7 @@
 #include "vm.h"
 #include "chunk.h"
 
-ObjFunction* compile(const char* source);
+ObjFunction* compile(const char* filename, const char* source);
 void markCompilerRoots();
 
 #endif

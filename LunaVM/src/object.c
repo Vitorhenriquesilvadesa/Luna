@@ -25,6 +25,23 @@ static Obj* allocateObject(size_t size, ObjType type)
 	return object;
 }
 
+ObjBoundMethod* newBoundMethod(Value receiver, ObjClosure* method)
+{
+	ObjBoundMethod* bound = ALLOCATE_OBJ(ObjBoundMethod, OBJ_BOUND_METHOD);
+	
+	bound->receiver = receiver;
+	bound->method = method;
+	return bound;
+}
+
+ObjStruct* newStruct(ObjString* name)
+{
+	ObjStruct* klass = ALLOCATE_OBJ(ObjStruct, OBJ_STRUCT);
+	klass->name = name;
+	initTable(&klass->methods);
+	return klass;
+}
+
 ObjUpvalue* newUpvalue(Value* slot)
 {
 	ObjUpvalue* upvalue = ALLOCATE_OBJ(ObjUpvalue, OBJ_UPVALUE);
@@ -59,6 +76,14 @@ ObjFunction* newFunction()
 	function->name = NULL;
 	initChunk(&function->chunk);
 	return function;
+}
+
+ObjInstance* newInstance(ObjStruct* klass)
+{
+	ObjInstance* instance = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
+	instance->klass = klass;
+	initTable(&instance->fields);
+	return instance;
 }
 
 ObjNative* newNative(NativeFn function, uint8_t expectedArgCount)
@@ -146,6 +171,10 @@ void printObject(Value value)
 		printFunction(AS_FUNCTION(value));
 		break;
 
+	case OBJ_INSTANCE:
+		printf("<%s instance>", AS_INSTANCE(value)->klass->name->characters);
+		break;
+
 	case OBJ_NATIVE:
 		printf("<native fn>");
 		break;
@@ -156,6 +185,14 @@ void printObject(Value value)
 
 	case OBJ_UPVALUE:
 		printf("<upvalue>");
+		break;
+
+	case OBJ_STRUCT:
+		printf("<struct %s>", AS_STRUCT(value)->name->characters);
+		break;
+
+	case OBJ_BOUND_METHOD:
+		printFunction(AS_BOUND_METHOD(value)->method->function);
 		break;
 	}
 }

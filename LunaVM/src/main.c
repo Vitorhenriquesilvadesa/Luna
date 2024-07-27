@@ -27,7 +27,7 @@ static void repl()
 			break;
 		}
 
-		interpret(line);
+		interpret("REPL", line);
 	}
 }
 
@@ -72,7 +72,7 @@ static void runFile(const char* path)
 {
 	char* source = readFile(path);
 
-	InterpretResult result = interpret(source);
+	InterpretResult result = interpret(path, source);
 	free(source);
 
 	if (result == INTERPRET_COMPILE_ERROR) exit(65);

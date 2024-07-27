@@ -59,17 +59,29 @@ int disassembleInstruction(Chunk* chunk, int offset)
 	uint8_t instruction = chunk->code[offset];
 	switch (instruction) 
 	{
+	case OP_GET_PROPERTY:
+		return constantInstruction("get_property", chunk, offset);
+
+	case OP_SET_PROPERTY:
+		return constantInstruction("set_property", chunk, offset);
+
+	case OP_STRUCT:
+		return constantInstruction("struct", chunk, offset);
+
+	case OP_METHOD:
+		return constantInstruction("method", chunk, offset);
+
 	case OP_CONSTANT:
 		return constantInstruction("push_constant", chunk, offset);
 
 	case OP_NULL:
-		return simpleInstruction("push_null", chunk, offset);
+		return simpleInstruction("push_null", offset);
 
 	case OP_TRUE:
-		return simpleInstruction("push_true", chunk, offset);
+		return simpleInstruction("push_true", offset);
 
 	case OP_FALSE:	
-		return simpleInstruction("push_false", chunk, offset);
+		return simpleInstruction("push_false", offset);
 
 	case OP_POP:
 		return simpleInstruction("pop", offset);
@@ -96,16 +108,16 @@ int disassembleInstruction(Chunk* chunk, int offset)
 		return byteInstruction("set_upvalue", chunk, offset);
 	
 	case OP_CLOSE_UPVALUE:
-		return simpleInstruction("close_upvalue", chunk, offset);
+		return simpleInstruction("close_upvalue", offset);
 
 	case OP_EQUAL:
 		return simpleInstruction("op_equal", offset);
 
 	case OP_GREATER:
-		return simpleInstruction("op_greater", chunk, offset);
+		return simpleInstruction("op_greater", offset);
 
 	case OP_LESS:
-		return simpleInstruction("op_less", chunk, offset);
+		return simpleInstruction("op_less", offset);
 
 	case OP_NEGATE:
 		return simpleInstruction("negate", offset);

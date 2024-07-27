@@ -100,6 +100,30 @@ static void closeUpvalues(Value* last)
 	}
 }
 
+static void defineMethod(ObjString* name)
+{
+	Value method = peek(0);
+	ObjStruct* klass = AS_STRUCT(peek(1));
+	tableSet(&klass->methods, name, method); 
+	pop();
+}
+
+static bool bindMethod(ObjStruct* klass, ObjString* name)
+{
+	Value method;
+	
+	if (!tableGet(&klass->methods, name, &method))
+	{
+		runtimeError("Undefined property '%s'.", name->characters);
+		return false;
+	}
+
+	ObjBoundMethod* bound = newBoundMethod(peek(0), AS_CLOSURE(method));
+	pop();
+	push(OBJ_VAL(bound));
+	return true;
+}
+
 static InterpretResult run() 
 {
 	CallFrame* frame = &vm.frames[vm.frameCount - 1];
@@ -343,7 +367,62 @@ static InterpretResult run()
 			break;
 		}
 
+		case OP_GET_PROPERTY:
+		{
+			if (!IS_INSTANCE(peek(0)))
+			{
+				runtimeError("Only instances have properties.");
+				return INTERPRET_RUNTIME_ERROR;
+			}
+
+			ObjInstance* instance = AS_INSTANCE(peek(0));
+			ObjString* name = READ_STRING();
+
+			Value value;
+
+			if (tableGet(&instance->fields, name, &value))
+			{
+				pop();
+				push(value);
+				break;
+			}
+
+			if (!bindMethod(instance->klass, name))
+			{
+				return INTERPRET_RUNTIME_ERROR;
+			}
+			break;
+		}
+
+		case OP_SET_PROPERTY:
+		{
+			if (!IS_INSTANCE(peek(1))) {
+				runtimeError("Only instances have fields.");
+				return INTERPRET_RUNTIME_ERROR;
+			}
+
+			ObjInstance* instance = AS_INSTANCE(peek(1));
+			tableSet(&instance->fields, READ_STRING(), peek(0));
+			Value value = pop();
+			pop();
+			push(value);
+			break;
+		}
+
+		case OP_STRUCT:
+		{
+			push(OBJ_VAL(newStruct(READ_STRING())));
+			break;
+		}
+
+		case OP_METHOD:
+		{
+			defineMethod(READ_STRING());
+			break;
+		}
+
 		case OP_RETURN:
+		{
 			Value result = pop();
 			closeUpvalues(frame->slots);
 			vm.frameCount--;
@@ -359,6 +438,7 @@ static InterpretResult run()
 			frame = &vm.frames[vm.frameCount - 1];
 			break;
 		}
+		}
 	}
 
 #undef READ_BYTE
@@ -368,9 +448,9 @@ static InterpretResult run()
 #undef BINARY_OP
 }
 
-InterpretResult interpret(const char* source)
+InterpretResult interpret(const char* filename, const char* source)
 {
-	ObjFunction* function = compile(source);
+	ObjFunction* function = compile(filename, source);
 	if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
 	push(OBJ_VAL(function));
@@ -424,6 +504,19 @@ static bool callValue(Value callee, int argCount)
 	{
 		switch (OBJ_TYPE(callee))
 		{
+		case OBJ_BOUND_METHOD:
+		{
+			ObjBoundMethod* bound = AS_BOUND_METHOD(callee);
+			return call(bound->method, argCount);
+		}
+
+		case OBJ_STRUCT:
+		{
+			ObjStruct* klass = AS_STRUCT(callee);
+			vm.stackTop[-argCount - 1] = OBJ_VAL(newInstance(klass));
+			return true;
+		}
+
 		case OBJ_CLOSURE:
 		{
 			return call(AS_CLOSURE(callee), argCount);

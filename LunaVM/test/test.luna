@@ -1,31 +1,3 @@
-def sayHello(x) {
+import "test/stdlib" 
 
-	if(x == 0) return;
-
-	var i = "Hello";
-	i = 0;
-	
-	println i;
-
-	sayHello(x - 1);
-}
-
-{
-	var a = 0;
-	var b = 10;
-}
-var c = 110;
-var d = 1110;
-var e = 11110;
-var f = 111110;
-var g = 20;
-var h = 220;
-var i = 2220;
-var j = 22220;
-var k = 222220;
-var l = 30;
-var m = 330;
-var n = 3330;
-var o = 33330;
-
-sayHello(50);
+print x
