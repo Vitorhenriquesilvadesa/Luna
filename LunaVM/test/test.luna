@@ -1,14 +1,6 @@
 import "test/stdlib"
 
-var x = List()
+var message = input()
+var numInput = double(message)
 
-x.append("Hello")
-x.append("Hello")
-x.append("Hello")
-x.append("Hello")
-x.append("Hello")
-
-for(var i = 0; i < x.length; i = i + 1) {
-	writeln(x.get(i))
-}
-
+writeln(numInput + " Hello")

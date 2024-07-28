@@ -1,20 +1,18 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include <time.h>
 
 #include "debug.h"
 #include "lmemory.h"
 #include "object.h"
 #include "vm.h"
 #include "compiler.h"
+#include "nativelib.h"
 
 VM vm;
-
-static Value clockNative(int argCount, Value* args)
-{
-	return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
-}
 
 Value peek(int distance);
 static bool isFalsey(Value value);
@@ -80,8 +78,19 @@ void initVM()
 	initTable(&vm.strings);
 	vm.initString = NULL;
 	vm.initString = copyString("init", 4);
-
+	
 	defineNative("clock", clockNative, 0);
+	defineNative("input", inputNative, 0);
+	defineNative("open", openNative, 2);
+	defineNative("strlen", stringLengthNative, 1);
+	defineNative("double", toNumberNative, 1);
+	defineNative("cos", cosNative, 1);
+	defineNative("sin", sinNative, 1);
+	defineNative("tan", tanNative, 1);
+	defineNative("pow", powNative, 2);
+	defineNative("sqrt", sqrtNative, 1);
+	defineNative("charAt", charAtNative, 2);
+	defineNative("substr", substrNative, 3);
 }
 
 void freeVM()
@@ -160,6 +169,46 @@ static bool invoke(ObjString* name, int argCount)
 	}
 
 	return invokeFromClass(instance->klass, name, argCount);
+}
+
+ObjString* concatStringAndNumber(const ObjString* str, double num) {
+	char numBuffer[50];
+	snprintf(numBuffer, sizeof(numBuffer), "%f", num);
+
+	size_t strLen = strlen(str->characters);
+	size_t numLen = strlen(numBuffer);
+	size_t totalLen = strLen + numLen + 1;
+
+	char* result = (char*)malloc(totalLen);
+	if (result == NULL) {
+		return NULL;
+	}
+
+	strcpy(result, str->characters);
+	strcat(result, numBuffer);
+
+	ObjString* resultString = takeString(result, totalLen - 1);
+	return resultString;
+}
+
+ObjString* concatNumberAndString(double num, const ObjString* str) {
+	char numBuffer[50];
+	snprintf(numBuffer, sizeof(numBuffer), "%f", num);
+
+	size_t numLen = strlen(numBuffer);
+	size_t strLen = strlen(str->characters);
+	size_t totalLen = numLen + strLen + 1;
+
+	char* result = (char*)malloc(totalLen);
+	if (result == NULL) {
+		return NULL;
+	}
+
+	strcpy(result, numBuffer);
+	strcat(result, str->characters);
+
+	ObjString* resultString = takeString(result, totalLen - 1);
+	return resultString;
 }
 
 static InterpretResult run() 
@@ -286,9 +335,21 @@ static InterpretResult run()
 				double a = AS_NUMBER(pop());
 				push(NUMBER_VAL(a + b));
 			}
+			else if (IS_STRING(peek(1)) && IS_NUMBER(peek(0)))
+			{
+				double b = AS_NUMBER(pop());
+				ObjString* a = AS_STRING(pop());
+				push(OBJ_VAL(concatStringAndNumber(a, b)));
+			}
+			else if (IS_STRING(peek(0)) && IS_NUMBER(peek(1)))
+			{
+				ObjString* a = AS_STRING(pop());
+				double b = AS_NUMBER(pop());
+				push(OBJ_VAL(concatNumberAndString(b, a)));
+			}
 			else
 			{
-				runtimeError("Operands must be two numbers or two strings.");
+				runtimeError("Operands must be two numbers or two strings, or one number and one string.");
 				return INTERPRET_RUNTIME_ERROR;
 			}
 			break;

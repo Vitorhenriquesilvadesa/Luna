@@ -455,7 +455,7 @@ static void number(bool canAssign)
 	emitConstant(NUMBER_VAL(value));
 }
 
-static void or (bool canAssign)
+static void or(bool canAssign)
 {
 	int elseJump = emitJump(OP_JUMP_IF_FALSE);
 	int endJump = emitJump(OP_JUMP);
@@ -1021,6 +1021,7 @@ static void importModule(Token line, const char* name, int length) {
 	}
 
 	const char* source = readFile(fileName);
+
 	Scanner previousScanner = scanner;
 	initScanner(source);
 
