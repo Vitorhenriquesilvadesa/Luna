@@ -30,6 +30,7 @@ static void resetStack()
 
 static void runtimeError(const char* format, ...)
 {
+	fprintf(stderr, "Runtime error: ");
 	va_list args;
 	va_start(args, format);
 	vfprintf(stderr, format, args);
@@ -41,7 +42,7 @@ static void runtimeError(const char* format, ...)
 		CallFrame* frame = &vm.frames[i];
 		ObjFunction* function = frame->closure->function;
 		size_t instruction = frame->ip - function->chunk.code - 1;
-		fprintf(stderr, "[line %d] in ", function->chunk.lines[instruction]);
+		fprintf(stderr, "    [line %d] in ", function->chunk.lines[instruction]);
 
 		if (function->name == NULL)
 		{
@@ -49,7 +50,7 @@ static void runtimeError(const char* format, ...)
 		}
 		else
 		{
-			fprintf(stderr, "%s()\n", function->name->characters);
+			fprintf(stderr, "%s\n", function->name->characters);
 		}
 	}
 
@@ -136,7 +137,7 @@ static bool bindMethod(ObjStruct* klass, ObjString* name)
 	return true;
 }
 
-static bool invokeFromClass(ObjStruct* target, ObjString* name, int argCount)
+static bool invokeFromStruct(ObjStruct* target, ObjString* name, int argCount)
 {
 	Value method;
 
@@ -168,7 +169,7 @@ static bool invoke(ObjString* name, int argCount)
 		return callValue(value, argCount);
 	}
 
-	return invokeFromClass(instance->klass, name, argCount);
+	return invokeFromStruct(instance->klass, name, argCount);
 }
 
 ObjString* concatStringAndNumber(const ObjString* str, double num) {
@@ -514,6 +515,23 @@ static InterpretResult run()
 			break;
 		}
 
+		case OP_INHERIT:
+		{
+			Value superstruct = peek(1);
+
+			if (!IS_STRUCT(superstruct))
+			{
+				runtimeError("The superstruct must be a struct.");
+				return INTERPRET_RUNTIME_ERROR;
+			}
+
+			ObjStruct* substruct = AS_STRUCT(peek(0));
+			tableAddAll(&AS_STRUCT(superstruct)->methods, &substruct->methods);
+
+			pop(); // Substruct
+			break;
+		}
+
 		case OP_METHOD:
 		{
 			defineMethod(READ_STRING());
@@ -531,6 +549,33 @@ static InterpretResult run()
 			}
 
 			frame = &vm.frames[vm.frameCount - 1];
+			break;
+		}
+
+		case OP_SUPER_INVOKE:
+		{
+			ObjString* method = READ_STRING();
+			int argCount = READ_BYTE();
+			ObjStruct* superstruct = AS_STRUCT(pop());
+			if (!invokeFromStruct(superstruct, method, argCount))
+			{
+				return INTERPRET_RUNTIME_ERROR;
+			}
+
+			frame = &vm.frames[vm.frameCount - 1];
+			break;
+		}
+
+		case OP_GET_SUPER:
+		{
+			ObjString* name = READ_STRING();
+			ObjStruct* superstruct = AS_STRUCT(pop());
+
+			if (!bindMethod(superstruct, name))
+			{
+				return INTERPRET_RUNTIME_ERROR;
+			}
+
 			break;
 		}
 

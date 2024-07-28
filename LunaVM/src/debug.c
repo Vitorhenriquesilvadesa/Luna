@@ -185,9 +185,24 @@ int disassembleInstruction(Chunk* chunk, int offset)
 		return offset;
 	}
 
+	case OP_INHERIT:
+	{
+		return simpleInstruction("inherit", offset);
+	}
+
 	case OP_INVOKE:
 	{
 		return invokeInstruction("invoke", chunk, offset);
+	}
+
+	case OP_SUPER_INVOKE:
+	{
+		return invokeInstruction("super_invoke", chunk, offset);
+	}
+
+	case OP_GET_SUPER:
+	{
+		return constantInstruction("get_super", chunk, offset);
 	}
 
 	case OP_RETURN:
