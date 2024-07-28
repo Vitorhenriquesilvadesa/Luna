@@ -10,7 +10,46 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <math.h>
+
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
+typedef struct {
+    GLFWwindow* window;
+} WindowEntry;
+
+#define MAX_WINDOWS 1024
+
+static WindowEntry* windowTable[MAX_WINDOWS];
+static int nextId = 1;
+
+int addWindow(GLFWwindow* window) {
+    int id = nextId++;
+    if (id >= MAX_WINDOWS) {
+        return -1; // Tabela cheia
+    }
+    windowTable[id] = malloc(sizeof(WindowEntry));
+    windowTable[id]->window = window;
+    return id;
+}
+
+GLFWwindow* getWindow(int id) {
+    if (id < 1 || id >= MAX_WINDOWS || windowTable[id] == NULL) {
+        return NULL;
+    }
+    return windowTable[id]->window;
+}
+
+void removeWindow(int id) {
+    if (id < 1 || id >= MAX_WINDOWS || windowTable[id] == NULL) {
+        return;
+    }
+    free(windowTable[id]);
+    windowTable[id] = NULL;
+}
+
 
 Value clockNative(int argCount, Value* args)
 {
@@ -23,25 +62,20 @@ Value inputNative(int argCount, Value* args)
     
     if (fgets(buffer, sizeof(buffer), stdin) != NULL)
     {
-        // Remove o caractere de nova linha se estiver presente
         size_t len = strlen(buffer);
         if (len > 0 && buffer[len - 1] == '\n') {
             buffer[len - 1] = '\0';
         }
         
-        // Calcula o comprimento da string sem o caractere de nova linha
         len = strlen(buffer);
 
-        // Aloca memória para a string final
         char* heapBuffer = (char*)malloc(len + 1);
         if (heapBuffer == NULL) {
             return NULL_VAL;
         }
 
-        // Copia a string do buffer para o heap
         strcpy(heapBuffer, buffer);
 
-        // Cria o objeto string e retorna
         ObjString* string = takeString(heapBuffer, (int)len);
         if (string == NULL) {
             free(heapBuffer);
@@ -247,7 +281,113 @@ Value writeNative(int argCount, Value* args) {
     return BOOL_VAL(true);
 }
 
+Value __glfwInit(int argCount, Value* args) {
+    return BOOL_VAL(glfwInit());
+}
 
+Value __glfwCreateWindow(int argCount, Value* args) {
+    if (argCount != 3 || !IS_NUMBER(args[0]) || !IS_NUMBER(args[1]) || !IS_STRING(args[2])) {
+        return NULL_VAL;
+    }
 
+    int width = (int)AS_NUMBER(args[0]);
+    int height = (int)AS_NUMBER(args[1]);
+    const char* title = AS_CSTRING(args[2]);
+    GLFWmonitor* monitor = (GLFWmonitor*)(intptr_t)AS_NUMBER(args[3]);
+
+    GLFWwindow* window = glfwCreateWindow(width, height, title, monitor, NULL);
+
+    if (!window) {
+        printf("Window not created");
+        return NULL_VAL;
+    }
+
+    double windowPtr = (double)(intptr_t)window;
+    return NUMBER_VAL(windowPtr);
+}
+
+Value __glfwMakeContextCurrent(int argCount, Value* args) {
+    if (argCount != 1 || !IS_NUMBER(args[0])) {
+        return NULL_VAL;
+    }
+
+    GLFWwindow* window = (GLFWwindow*)(intptr_t)AS_NUMBER(args[0]);
+
+    glfwMakeContextCurrent(window);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        printf("Glad not initialized");
+        return NULL_VAL;
+    }
+
+    return NULL_VAL;
+}
+
+Value __glfwWindowShouldClose(int argCount, Value* args) {
+    if (argCount != 1 || !IS_NUMBER(args[0])) {
+        return NULL_VAL;
+    }
+
+    GLFWwindow* window = (GLFWwindow*)(intptr_t)AS_NUMBER(args[0]);
+
+    int shouldClose = glfwWindowShouldClose(window);
+
+    return BOOL_VAL(shouldClose);
+}
+
+Value __glfwPollEvents(int argCount, Value* args) {
+    if (argCount != 0) {
+        return NULL_VAL;
+    }
+
+    glfwPollEvents();
+
+    return NULL_VAL;
+}
+
+Value __glfwSwapBuffers(int argCount, Value* args) {
+    if (argCount != 1 || !IS_NUMBER(args[0])) {
+        return NULL_VAL;
+    }
+
+    GLFWwindow* window = (GLFWwindow*)(intptr_t)AS_NUMBER(args[0]);
+    glfwSwapBuffers(window);
+    return NULL_VAL;
+}
+
+Value __glClearColor(int argCount, Value* args) {
+    if (argCount != 4 || !IS_NUMBER(args[0]) || !IS_NUMBER(args[1]) || !IS_NUMBER(args[2]) || !IS_NUMBER(args[3])) {
+        return NULL_VAL;
+    }
+
+    float r = (float)AS_NUMBER(args[0]);
+    float g = (float)AS_NUMBER(args[1]);
+    float b = (float)AS_NUMBER(args[2]);
+    float a = (float)AS_NUMBER(args[3]);
+
+    glClearColor(r, g, b, a);
+    return NULL_VAL;
+}
+
+Value __glClear(int argCount, Value* args) {
+    if (argCount != 1 || !IS_NUMBER(args[0])) {
+        return NULL_VAL;
+    }
+
+    GLenum mask = (GLenum)(int)AS_NUMBER(args[0]);
+    glClear(mask);
+    return NULL_VAL;
+}
+
+Value __gladLoadProc(int argCount, Value* args) {
+    if (argCount != 1 || !IS_NUMBER(args[0])) {
+        return NULL_VAL;
+    }
+
+    // Converte o valor double para um ponteiro de função
+    GLADloadproc proc = (GLADloadproc)(intptr_t)AS_NUMBER(args[0]);
+    return BOOL_VAL(gladLoadGLLoader(proc));
+}
 
 #endif

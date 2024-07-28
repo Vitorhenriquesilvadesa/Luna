@@ -88,11 +88,15 @@ void initVM()
 	defineNative("double", toNumberNative, 1);
 	defineNative("cos", cosNative, 1);
 	defineNative("sin", sinNative, 1);
-	defineNative("tan", tanNative, 1);
-	defineNative("pow", powNative, 2);
-	defineNative("sqrt", sqrtNative, 1);
-	defineNative("charAt", charAtNative, 2);
-	defineNative("substr", substrNative, 3);
+
+	defineNative("glfwInit", __glfwInit, 0);
+	defineNative("glfwCreateWindow", __glfwCreateWindow, 3);
+	defineNative("glfwMakeContextCurrent", __glfwMakeContextCurrent, 1);
+	defineNative("glfwWindowShouldClose", __glfwWindowShouldClose, 1);
+	defineNative("glfwSwapBuffers", __glfwSwapBuffers, 1);
+	defineNative("glfwPollEvents", __glfwPollEvents, 0);
+	defineNative("glClearColor", __glClearColor, 4);
+	defineNative("glClear", __glClear, 1);
 }
 
 void freeVM()
