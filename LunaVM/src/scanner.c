@@ -85,19 +85,14 @@ static void skipWhitespace()
 
 		case '\n':
 			scanner.line++;
+			makeToken(TOKEN_NEWLINE);
 			advance();
 			break;
 
-		case '/':
-			if (peekNext() == '/')
-			{
-				while (peek() != '\n' && !isAtEnd()) advance();
-			}
-			else
-			{
-				return;
-			}
+		case '#':
+			while (peek() != '\n' && !isAtEnd()) advance();
 			break;
+
 		default:
 			return;
 		}
@@ -170,7 +165,8 @@ static TokenType identifierType()
 		{
 			switch (scanner.start[1])
 			{
-			case 'u': return checkKeyword(2, 4, "per", TOKEN_SUPER);
+			case 'u': return checkKeyword(2, 3, "per", TOKEN_SUPER);
+			case 'e': return checkKeyword(2, 2, "lf", TOKEN_THIS);
 			case 't': return checkKeyword(2, 4, "ruct", TOKEN_STRUCT);
 			}
 		}
@@ -180,7 +176,6 @@ static TokenType identifierType()
 		{
 			switch (scanner.start[1])
 			{
-			case 'h': return checkKeyword(2, 2, "is", TOKEN_THIS);
 			case 'r': return checkKeyword(2, 2, "ue", TOKEN_TRUE);
 			}
 		}

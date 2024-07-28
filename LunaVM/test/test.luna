@@ -1,3 +1,14 @@
-import "test/stdlib" 
+import "test/stdlib"
 
-print x
+var x = List()
+
+x.append("Hello")
+x.append("Hello")
+x.append("Hello")
+x.append("Hello")
+x.append("Hello")
+
+for(var i = 0; i < x.length; i = i + 1) {
+	writeln(x.get(i))
+}
+

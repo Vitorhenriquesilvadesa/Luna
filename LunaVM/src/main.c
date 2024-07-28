@@ -7,12 +7,11 @@
 #include "debug.h"
 #include "vm.h"
 
-static void repl()
+static void repl(void)
 {
-	char line[1024];
-
 	for (;;)
 	{
+		char line[1024];
 		printf("> ");
 
 		if (!fgets(line, sizeof(line), stdin))

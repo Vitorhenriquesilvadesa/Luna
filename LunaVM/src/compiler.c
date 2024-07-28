@@ -69,6 +69,8 @@ typedef enum
 	TYPE_FUNCTION,
 	TYPE_SCRIPT,
 	TYPE_IMPORT,
+	TYPE_METHOD,
+	TYPE_INITIALIZER,
 } FunctionType;
 
 
@@ -83,8 +85,14 @@ typedef struct Compiler
 	int scopeDepth;
 } Compiler;
 
+typedef struct CurrentStruct
+{
+	struct CurrentStruct* enclosing;
+} CurrentStruct;
+
 Parser parser;
 Compiler* current = NULL;
+CurrentStruct* currentStruct = NULL;
 Chunk* compilingChunk;
 char* currentModuleName = NULL;
 
@@ -208,7 +216,14 @@ static int emitJump(uint8_t instruction)
 
 static void emitReturn()
 {
-	emitByte(OP_NULL);
+	if (current->type == TYPE_INITIALIZER)
+	{
+		emitBytes(OP_GET_LOCAL, 0);
+	}
+	else
+	{
+		emitByte(OP_NULL);
+	}
 	emitByte(OP_RETURN);
 }
 
@@ -268,8 +283,16 @@ static void initCompiler(Compiler* compiler, FunctionType type)
 	Local* local = &current->locals[current->localCount++];
 	local->depth = 0;
 	local->isCaptured = false;
-	local->name.start = "";
-	local->name.length = 0;
+	if (type != TYPE_FUNCTION && type != TYPE_IMPORT)
+	{
+		local->name.start = "self";
+		local->name.length = 4;
+	}
+	else
+	{
+		local->name.start = "";
+		local->name.length = 0;
+	}
 }
 
 static ObjFunction* endCompiler()
@@ -314,14 +337,14 @@ static void endScope()
 	}
 }
 
-static void expression();
-static void statement();
-static void declaration();
+static void expression(void);
+static void statement(void);
+static void declaration(void);
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 static uint8_t identifierConstant(Token* name);
 static int resolveLocal(Compiler* compiler, Token* name);
-static void declareVariable();
+static void declareVariable(void);
 
 static uint8_t parseVariable(const char* errorMessage)
 {
@@ -513,14 +536,26 @@ static void dot(bool canAssign)
 		expression();
 		emitBytes(OP_SET_PROPERTY, name);
 	}
+	else if (match(TOKEN_LEFT_PAREN))
+	{
+		uint8_t argCount = argumentList();
+		emitBytes(OP_INVOKE, name);
+		emitByte(argCount);
+	}
 	else
 	{
 		emitBytes(OP_GET_PROPERTY, name);
 	}
 }
 
-static void this_(bool canAssign)
+static void self(bool canAssign)
 {
+	if (currentStruct == NULL)
+	{
+		error("Cannot use 'self' out of struct.");
+		return;
+	}
+
 	variable(false);
 }
 
@@ -559,12 +594,13 @@ ParseRule rules[] = {
   [TOKEN_PRINT] = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RETURN] = {NULL,     NULL,   PREC_NONE},
   [TOKEN_SUPER] = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_THIS] = {this_,     NULL,   PREC_NONE},
+  [TOKEN_THIS] = {self,     NULL,   PREC_NONE},
   [TOKEN_TRUE] = {literal,     NULL,   PREC_NONE},
   [TOKEN_VAR] = {NULL,     NULL,   PREC_NONE},
   [TOKEN_WHILE] = {NULL,     NULL,   PREC_NONE},
   [TOKEN_ERROR] = {NULL,     NULL,   PREC_NONE},
   [TOKEN_EOF] = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_IMPORT] = {NULL, NULL, PREC_NONE},
 };
 
 static void parsePrecedence(Precedence precedence)
@@ -769,7 +805,13 @@ static void method()
 	consume(TOKEN_IDENTIFIER, "Expect function name.");
 	uint8_t constant = identifierConstant(&parser.previous);
 
-	FunctionType type = TYPE_FUNCTION;
+	FunctionType type = TYPE_METHOD;
+
+	if (parser.previous.length == 4 && memcmp(parser.previous.start, "init", 4) == 0)
+	{
+		type = TYPE_INITIALIZER;
+	}
+
 	function(type);
 	emitBytes(OP_METHOD, constant);
 }
@@ -804,7 +846,7 @@ static void structDeclaration()
 {
 	if (current->scopeDepth > 0)
 	{
-		error("Cannot declare class out of global scope.");
+		error("Cannot declare struct out of global scope.");
 	}
 
 	consume(TOKEN_IDENTIFIER, "Expect struct name.");
@@ -814,6 +856,11 @@ static void structDeclaration()
 
 	emitBytes(OP_STRUCT, nameConstant);
 	defineVariable(nameConstant);
+
+	CurrentStruct structCompiler;
+	structCompiler.enclosing = currentStruct;
+	currentStruct = &structCompiler;
+
 	namedVariable(structName, false);
 
 	if (check(TOKEN_LEFT_BRACE))
@@ -831,6 +878,7 @@ static void structDeclaration()
 	}
 
 	emitByte(OP_POP);
+	currentStruct = currentStruct->enclosing;
 }
 
 static void addImportedModule(const char* moduleName) {
@@ -871,6 +919,72 @@ static void freeImportedModules() {
 	importedModulesHead = NULL;
 }
 
+static char* readFile(const char* path)
+{
+	FILE* file = fopen(path, "rb");
+	if (file == NULL)
+	{
+		fprintf(stderr, "Could not open file \"%s\".\n", path);
+		return NULL;
+	}
+
+	// Move para o final do arquivo para obter o tamanho
+	if (fseek(file, 0L, SEEK_END) != 0)
+	{
+		fprintf(stderr, "Could not determine the size of file \"%s\".\n", path);
+		fclose(file);
+		return NULL;
+	}
+
+	size_t fileSize = ftell(file);
+	if (fileSize == (size_t)-1)
+	{
+		fprintf(stderr, "Could not determine the size of file \"%s\".\n", path);
+		fclose(file);
+		return NULL;
+	}
+
+	rewind(file);
+
+	char* buffer = (char*)malloc(fileSize + 1);
+	if (buffer == NULL)
+	{
+		fprintf(stderr, "Not enough memory to read \"%s\".\n", path);
+		fclose(file);
+		return NULL;
+	}
+
+	size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
+	if (bytesRead < fileSize)
+	{
+		fprintf(stderr, "Could not read file \"%s\".\n", path);
+		free(buffer);
+		fclose(file);
+		return NULL;
+	}
+
+	// Remove BOM if present
+	if (bytesRead >= 3 && (unsigned char)buffer[0] == 0xEF && (unsigned char)buffer[1] == 0xBB && (unsigned char)buffer[2] == 0xBF)
+	{
+		// Move the buffer left to remove BOM
+		memmove(buffer, buffer + 3, bytesRead - 3);
+		buffer[bytesRead - 3] = '\0';
+	}
+	else
+	{
+		buffer[bytesRead] = '\0';
+	}
+
+	if (fclose(file) != 0)
+	{
+		fprintf(stderr, "Error closing file \"%s\".\n", path);
+		free(buffer);
+		return NULL;
+	}
+
+	return buffer;
+}
+
 static void importModule(Token line, const char* name, int length) {
 	size_t start = 0;
 	size_t end = length;
@@ -900,40 +1014,13 @@ static void importModule(Token line, const char* name, int length) {
 
 	char* previousModuleName = currentModuleName;
 
-	currentModuleName = _strdup(fileName);
+	currentModuleName = fileName;
 	if (currentModuleName == NULL) {
 		error("Memory allocation failed.");
 		exit(1);
 	}
 
-	FILE* file = fopen(fileName, "r");
-	if (!file) {
-		errorAt(&line, "Could not open module file.");
-		free(fileName);
-		free(currentModuleName);
-		currentModuleName = previousModuleName;
-		return;
-	}
-
-	fseek(file, 0, SEEK_END);
-	long fileSize = ftell(file);
-	fseek(file, 0, SEEK_SET);
-
-	char* source = malloc(fileSize + 1);
-	if (source == NULL) {
-		error("Memory allocation failed.");
-		fclose(file);
-		free(fileName);
-		free(currentModuleName);
-		currentModuleName = previousModuleName;
-		exit(1);
-	}
-
-	fread(source, 1, fileSize, file);
-	source[fileSize] = '\0';
-	fclose(file);
-	free(fileName);
-
+	const char* source = readFile(fileName);
 	Scanner previousScanner = scanner;
 	initScanner(source);
 
@@ -945,6 +1032,7 @@ static void importModule(Token line, const char* name, int length) {
 	initCompiler(&compiler, TYPE_IMPORT);
 
 	advance();
+
 	while (!match(TOKEN_EOF)) {
 		declaration();
 	}
@@ -977,7 +1065,7 @@ static void forStatement()
 {
 	beginScope();
 
-	//consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+	consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
 	
 	if (match(TOKEN_SEMICOLON))
 	{
@@ -986,10 +1074,12 @@ static void forStatement()
 	else if (match(TOKEN_VAR))
 	{
 		varDeclaration();
+		consume(TOKEN_SEMICOLON, "Expect ';' after 'for' var declaration.");
 	}
 	else
 	{
 		expressionStatement();
+		consume(TOKEN_SEMICOLON, "Expect ';' after 'for' expression clause.");
 	}
 
 	int loopStart = currentChunk()->count;
@@ -998,7 +1088,7 @@ static void forStatement()
 	if (!match(TOKEN_SEMICOLON))
 	{
 		expression();
-		//consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
+		consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
 
 		exitJump = emitJump(OP_JUMP_IF_FALSE);
 		emitByte(OP_POP);
@@ -1011,7 +1101,7 @@ static void forStatement()
 		int incrementStart = currentChunk()->count;
 		expression();
 		emitByte(OP_POP);
-		//consume(TOKEN_RIGHT_PAREN, "Expect ')' after 'for' clauses.");
+		consume(TOKEN_RIGHT_PAREN, "Expect ')' after 'for' clauses.");
 
 		emitLoop(loopStart);
 		loopStart = incrementStart;
@@ -1075,6 +1165,11 @@ static void returnStatement()
 	}
 	else
 	{
+		if (current->type == TYPE_INITIALIZER)
+		{
+			error("Cannot return a value from initializer.");
+		}
+
 		expression();
 		//consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
 		emitByte(OP_RETURN);
@@ -1084,9 +1179,9 @@ static void returnStatement()
 static void whileStatement()
 {
 	int loopStart = currentChunk()->count;
-	//consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
+	consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
 	expression();
-	//consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+	consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
 
 	int exitJump = emitJump(OP_JUMP_IF_FALSE);
 	emitByte(OP_POP);
@@ -1127,7 +1222,11 @@ static void synchronize()
 
 static void declaration() 
 {
-	if (match(TOKEN_IMPORT))
+	if (match(TOKEN_SEMICOLON))
+	{
+		error("Unexpected token ';'.");
+	}
+	else if (match(TOKEN_IMPORT))
 	{
 		importDeclaration();
 	}
@@ -1153,6 +1252,10 @@ static void declaration()
 
 static void statement()
 {
+	if (match(TOKEN_SEMICOLON))
+	{
+		error("Unexpected token ';'.");
+	}
 	if (match(TOKEN_PRINT))
 	{
 		printStatement();
@@ -1163,6 +1266,7 @@ static void statement()
 	}
 	else if (match(TOKEN_IF))
 	{
+		
 		ifStatement();
 	} 
 	else if(match(TOKEN_RETURN)) 

@@ -78,6 +78,8 @@ void initVM()
 	vm.grayStack = NULL;
 	initTable(&vm.globals);
 	initTable(&vm.strings);
+	vm.initString = NULL;
+	vm.initString = copyString("init", 4);
 
 	defineNative("clock", clockNative, 0);
 }
@@ -86,6 +88,7 @@ void freeVM()
 {
 	freeTable(&vm.globals);
 	freeTable(&vm.strings);
+	vm.initString = NULL;
 	freeObjects();
 }
 
@@ -122,6 +125,41 @@ static bool bindMethod(ObjStruct* klass, ObjString* name)
 	pop();
 	push(OBJ_VAL(bound));
 	return true;
+}
+
+static bool invokeFromClass(ObjStruct* target, ObjString* name, int argCount)
+{
+	Value method;
+
+	if (!tableGet(&target->methods, name, &method))
+	{
+		runtimeError("Undefined property '%s'.", name->characters);
+		return false;
+	}
+
+	return call(AS_CLOSURE(method), argCount);
+}
+
+static bool invoke(ObjString* name, int argCount)
+{
+	Value receiver = peek(argCount);
+
+	if (!IS_INSTANCE(receiver))
+	{
+		runtimeError("Only instances have methods.");
+		return false;
+	}
+
+	ObjInstance* instance = AS_INSTANCE(receiver);
+
+	Value value;
+	if (tableGet(&instance->fields, name, &value))
+	{
+		vm.stackTop[-argCount - 1] = value;
+		return callValue(value, argCount);
+	}
+
+	return invokeFromClass(instance->klass, name, argCount);
 }
 
 static InterpretResult run() 
@@ -421,6 +459,20 @@ static InterpretResult run()
 			break;
 		}
 
+		case OP_INVOKE:
+		{
+			ObjString* method = READ_STRING();
+			int argCount = READ_BYTE();
+
+			if (!invoke(method, argCount))
+			{
+				return INTERPRET_RUNTIME_ERROR;
+			}
+
+			frame = &vm.frames[vm.frameCount - 1];
+			break;
+		}
+
 		case OP_RETURN:
 		{
 			Value result = pop();
@@ -507,6 +559,7 @@ static bool callValue(Value callee, int argCount)
 		case OBJ_BOUND_METHOD:
 		{
 			ObjBoundMethod* bound = AS_BOUND_METHOD(callee);
+			vm.stackTop[-argCount - 1] = bound->receiver;
 			return call(bound->method, argCount);
 		}
 
@@ -514,6 +567,17 @@ static bool callValue(Value callee, int argCount)
 		{
 			ObjStruct* klass = AS_STRUCT(callee);
 			vm.stackTop[-argCount - 1] = OBJ_VAL(newInstance(klass));
+			Value initializer;
+			if (tableGet(&klass->methods, vm.initString, &initializer))
+			{
+				return call(AS_CLOSURE(initializer), argCount);
+			}
+			else if (argCount != 0)
+			{
+				runtimeError("Expect 0 arguments, but got %d", argCount);
+				return false;
+			}
+
 			return true;
 		}
 

@@ -1,1 +1,2 @@
-var x = 1
+import "test/list"
+import "test/console"
