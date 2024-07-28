@@ -14,3 +14,4 @@ Value powNative(int argCount, Value* args);
 Value sqrtNative(int argCount, Value* args);
 Value charAtNative(int argCount, Value* args);
 Value substrNative(int argCount, Value* args);
+Value writeNative(int argCount, Value* args);

@@ -82,7 +82,8 @@ void initVM()
 	
 	defineNative("clock", clockNative, 0);
 	defineNative("input", inputNative, 0);
-	defineNative("open", openNative, 2);
+	defineNative("readf", openNative, 1);
+	defineNative("writef", writeNative, 2);
 	defineNative("strlen", stringLengthNative, 1);
 	defineNative("double", toNumberNative, 1);
 	defineNative("cos", cosNative, 1);

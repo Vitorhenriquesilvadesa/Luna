@@ -58,18 +58,13 @@ Value inputNative(int argCount, Value* args)
 
 Value openNative(int argCount, Value* args)
 {
-    if (argCount != 2) {
-        return NULL_VAL;
-    }
-
-    if (!IS_STRING(args[0]) || !IS_STRING(args[1])) {
+    if (!IS_STRING(args[0])) {
         return NULL_VAL;
     }
 
     const char* path = AS_CSTRING(args[0]);
-    const char* mode = AS_CSTRING(args[1]);
 
-    FILE* file = fopen(path, mode);
+    FILE* file = fopen(path, "rb");
     if (file == NULL) {
         return NULL_VAL;
     }
@@ -226,6 +221,32 @@ Value substrNative(int argCount, Value* args)
 
     return OBJ_VAL(resultString);
 }
+
+Value writeNative(int argCount, Value* args) {
+    if (argCount != 2 || !IS_STRING(args[0]) || !IS_STRING(args[1])) {
+        return NULL_VAL;
+    }
+
+    const char* path = AS_CSTRING(args[0]);
+    const char* content = AS_CSTRING(args[1]);
+
+    FILE* file = fopen(path, "wb");
+    if (file == NULL) {
+        return BOOL_VAL(false);
+    }
+
+    size_t contentLength = strlen(content);
+    size_t bytesWritten = fwrite(content, 1, contentLength, file);
+
+    fclose(file);
+
+    if (bytesWritten != contentLength) {
+        return BOOL_VAL(false);
+    }
+
+    return BOOL_VAL(true);
+}
+
 
 
 
