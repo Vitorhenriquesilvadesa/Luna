@@ -33,14 +33,19 @@ var a;
 var b = "Hello"
 ```
 
+Comments:
+```python
+# Comments starts at hash line
+```
+
 Import declaration:
 ```javascript
-import "stdlib"
+import "stdlib/core"
 ```
 
 Using console stdlib functions:
 ```javascript
-import "stdlib"
+import "stdlib/core"
 
 var a = "Hello "
 
@@ -49,7 +54,7 @@ writeln(a + "World")
 
 Functions:
 ```javascript
-import "stdlib"
+import "stdlib/core"
 
 def add(x, y) {
     return x + y
@@ -59,9 +64,25 @@ var result = add(5, 3)
 writeln("The result is: " + result)
 ```
 
+Functions with empty returns use semicolon at end:
+```python
+import "stdlib/core"
+
+def add(x, y) {
+    if(x == null or y == null)
+        # semicolon here
+        return;
+    
+    return x + y
+}
+
+var result = add(5, 3)
+writeln("The result is: " + result)
+```
+
 Control flow with `if` and `else`:
 ```javascript
-import "stdlib"
+import "stdlib/core"
 
 var number = 10
 
@@ -74,7 +95,7 @@ if (number > 5) {
 
 `For` loops:
 ```javascript
-import "stdlib"
+import "stdlib/core"
 
 for (var i = 0; i < 5; i = i + 1) {
     writeln("Iteration: " + i)
@@ -98,9 +119,51 @@ var p = Point(10, 20)
 p.display()
 ```
 
+Struct Behavior Copy:
+```Python
+struct Vector2 {
+    def init(x, y) {
+        self.x = x
+        self.y = y
+    }
+    
+    def length() {
+        return sqrt(x * x + y * y)
+    }
+    
+    def getX() {
+        return x
+    }
+    
+    def getY() {
+        return y
+    }
+}
+
+# All Vector2 behaviors are copied in Point struct.
+struct Point : Vector2 {
+    def init(x, y) {
+        super.init(x, y)
+    }
+
+    def length() {
+        return super.length()
+    }
+    
+    def getX() {
+        return super.getX()
+    }
+    
+    def getY() {
+        return super.getY()
+    }
+}
+
+```
+
 `Lists`:
 ```javascript
-import "stdlib";
+import "stdlib/core";
 
 var list = List();
 list.append(1)
