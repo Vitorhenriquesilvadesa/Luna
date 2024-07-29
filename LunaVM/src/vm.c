@@ -85,9 +85,12 @@ void initVM()
 	defineNative("readf", openNative, 1);
 	defineNative("writef", writeNative, 2);
 	defineNative("strlen", stringLengthNative, 1);
+	defineNative("substr", substrNative, 3);
 	defineNative("double", toNumberNative, 1);
 	defineNative("cos", cosNative, 1);
 	defineNative("sin", sinNative, 1);
+	defineNative("tan", tanNative, 1);
+	defineNative("sqrt", sqrtNative, 1);
 
 	defineNative("glfwInit", __glfwInit, 0);
 	defineNative("glfwCreateWindow", __glfwCreateWindow, 3);
@@ -237,6 +240,18 @@ static InterpretResult run()
 		push(valueType(a op b)); \
 	} while (false)
 
+#define BINARY_OP_INT(valueType, op) \
+do { \
+	if(!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) \
+	{ \
+		runtimeError("Operands must be numbers."); \
+		return INTERPRET_RUNTIME_ERROR; \
+		} \
+		int b = (int)AS_NUMBER(pop()); \
+		int a = (int)AS_NUMBER(pop()); \
+		push(valueType(a op b)); \
+	} while (false)
+
 	for (;;)
 	{
 #ifdef DEBUG_TRACE_EXECUTION
@@ -362,6 +377,7 @@ static InterpretResult run()
 		}
 
 		case OP_SUBTRACT: BINARY_OP(NUMBER_VAL, - ); break;
+		case OP_MOD: BINARY_OP_INT(NUMBER_VAL, % ); break;
 		case OP_MULTIPLY: BINARY_OP(NUMBER_VAL, * ); break;
 		case OP_DIVIDE: BINARY_OP(NUMBER_VAL, / ); break;
 

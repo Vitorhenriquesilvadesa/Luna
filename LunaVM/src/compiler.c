@@ -437,6 +437,8 @@ static void binary(bool canAssign)
         break;
     case TOKEN_STAR: emitByte(OP_MULTIPLY);
         break;
+    case TOKEN_MOD: emitByte(OP_MOD);
+        break;
     default: return; // Unreachable.
     }
 }
@@ -550,7 +552,7 @@ static void super_(bool canAssign)
     consume(TOKEN_DOT, "Expect '.' after 'super'.");
     consume(TOKEN_IDENTIFIER, "Expect superstruct method name.");
     uint8_t name = identifierConstant(&parser.previous);
-    
+
     namedVariable(syntheticToken("self"), false);
 
     if (match(TOKEN_LEFT_PAREN))
@@ -630,6 +632,7 @@ ParseRule rules[] = {
     [TOKEN_SEMICOLON] = {NULL, NULL, PREC_NONE},
     [TOKEN_SLASH] = {NULL, binary, PREC_FACTOR},
     [TOKEN_STAR] = {NULL, binary, PREC_FACTOR},
+    [TOKEN_MOD] = {NULL, binary, PREC_FACTOR},
     [TOKEN_BANG] = {unary, NULL, PREC_NONE},
     [TOKEN_BANG_EQUAL] = {NULL, binary, PREC_EQUALITY},
     [TOKEN_EQUAL] = {NULL, NULL, PREC_NONE},
@@ -1081,9 +1084,9 @@ static char* readFile(const char* path)
 
 static void importModule(Token line, const char* name, int length)
 {
-    if(current->scopeDepth > 0)
+    if (current->scopeDepth > 0)
     {
-        switch(current->type)
+        switch (current->type)
         {
         case TYPE_METHOD:
             errorAt(&line, "Cannot import modules inside a method.");
@@ -1105,7 +1108,7 @@ static void importModule(Token line, const char* name, int length)
 
         return;
     }
-    
+
     size_t start = 0;
     size_t end = length;
 
@@ -1162,7 +1165,7 @@ static void importModule(Token line, const char* name, int length)
     {
         declaration();
     }
-    
+
     parser = previousParser;
     current = previousCompiler;
     scanner = previousScanner;
