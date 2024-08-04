@@ -3,6 +3,9 @@
 
 #include "lmemory.h"
 #include "object.h"
+
+#include <stdlib.h>
+
 #include "value.h"
 #include "vm.h"
 #include "table.h"
@@ -23,6 +26,20 @@ static Obj* allocateObject(size_t size, ObjType type)
 #endif
 
 	return object;
+}
+
+ObjList* newList()
+{
+	ObjList* list = ALLOCATE_OBJ(ObjList, OBJ_LIST);
+	list->elements = NULL;
+	list->length = 0;
+	return list;
+}
+
+void appendToList(ObjList* list, Value value) {
+	list->length++;
+	list->elements = (Value*)realloc(list->elements, sizeof(Value) * list->length);
+	list->elements[list->length - 1] = value;
 }
 
 ObjBoundMethod* newBoundMethod(Value receiver, ObjClosure* method)
@@ -193,6 +210,10 @@ void printObject(Value value)
 
 	case OBJ_BOUND_METHOD:
 		printFunction(AS_BOUND_METHOD(value)->method->function);
+		break;
+
+	case OBJ_LIST:
+		printf("<list>");
 		break;
 	}
 }

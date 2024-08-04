@@ -250,6 +250,8 @@ Token scanToken()
 	case '/': return makeToken(TOKEN_SLASH);
 	case '*': return makeToken(TOKEN_STAR);
 	case '%': return makeToken(TOKEN_MOD);
+	case '[': return makeToken(TOKEN_LEFT_BRACKET);
+	case ']': return makeToken(TOKEN_RIGHT_BRACKET);
 
 	case '!':
 		return makeToken(match('=') ? TOKEN_BANG_EQUAL : TOKEN_BANG);

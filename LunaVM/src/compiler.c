@@ -341,6 +341,7 @@ static void endScope()
     }
 }
 
+static void list(bool canAssign);
 static void expression(void);
 static void statement(void);
 static void declaration(void);
@@ -663,6 +664,7 @@ ParseRule rules[] = {
     [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
     [TOKEN_EOF] = {NULL, NULL, PREC_NONE},
     [TOKEN_IMPORT] = {NULL, NULL, PREC_NONE},
+    [TOKEN_LEFT_BRACKET] = {list, NULL, PREC_NONE},
 };
 
 static void parsePrecedence(Precedence precedence)
@@ -970,6 +972,33 @@ static void structDeclaration()
     }
 
     currentStruct = currentStruct->enclosing;
+}
+
+static void list(bool canAssign)
+{
+    int length = 0;
+    ObjList* list = newList();
+
+    if (!check(TOKEN_RIGHT_BRACKET))
+    {
+        do
+        {
+            if (length < 255) 
+            {
+                expression();
+                emitByte(OP_ADD_LIST);
+                length++;
+            }
+            else
+            {
+                error("Can't have more than 255 values in one list.");
+            }
+        } while (match(TOKEN_COMMA));
+
+        consume(TOKEN_RIGHT_BRACKET, "Expect ']' at list values.");
+    }
+
+    emitConstant(OBJ_VAL(list));
 }
 
 static void addImportedModule(const char* moduleName)
